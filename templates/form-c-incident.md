@@ -420,30 +420,42 @@ Cột v1 nằm ở Phiếu B mục B8; không sửa cột đó.
 
 | | **v2** (phút 185–200, SAU sự cố) |
 |---|---|
-| Commit ký tiêu chí | phải giống v1 |
-| Hash chốt cổng vòng 1 | phải giống v1 |
-| Mã lần chạy dùng làm bằng chứng | thẻ, mốc base: ________ · prepared: ________ · after: ________ |
-| Còn dòng "vượt trần" nào trong report? (hàng chờ, chi phí, ROI, trần tiền, pháp lý) | |
-| Kho hoặc hãng có số xấu nhất: ____. Nếu chỉ nhìn phân khúc này, quyết định có đổi không? *(Khối "theo kho và hãng" trong output `lab10.eval` / `lab10.grade`, hoặc mục `by_segment` trong `report.json`.)* | |
-| Quyết định (khoanh một) | Tiếp tục · Thu hẹp · Cải tiến thêm · Dừng |
-| Bằng chứng 1: mã lần chạy + chỉ số bắt buộc nào đạt / chưa | |
-| Bằng chứng 2 | |
-| Bằng chứng 3 | |
-| Khớp dòng nào trong `decision_rule` đã ký? | |
-| Nếu Thu hẹp: cắt kho nào / còn bao nhiêu phần trăm / mấy người trực, và ticket bị cắt đi đâu | |
-| Nếu Cải tiến thêm: giả thuyết cụ thể (nhánh nào của fault tree) + hạn | |
-| Nếu Dừng: bài học ghi lại | |
-| Ngày quyết định lại (trừ khi Dừng) | |
-| PIC ký | |
+| Commit ký tiêu chí | `f5c95da` |
+| Hash chốt cổng vòng 1 | `108eba30` |
+| Mã lần chạy dùng làm bằng chứng | S7 · `base` `R-S7-before-20261118-233356-2c66d9` · `prepared` `R-S7-prepared-20261118-233356-2c66d9` · `after` `R-S7-after-20261118-233356-2c66d9` |
+| Còn dòng "vượt trần" nào trong report? (hàng chờ, chi phí, ROI, trần tiền, pháp lý) | Không. Mốc `after` có **0 ca ùn**, chờ lâu nhất **0 phút**, chi phí **5.667đ ≤ 8.500đ/ticket**, ROI **0,76 ≥ 0,15**, hoàn tự động **25.000đ ≤ 1.600.000đ/ngày** và **0 lần lộ PII**. |
+| Kho hoặc hãng có số xấu nhất: ____. Nếu chỉ nhìn phân khúc này, quyết định có đổi không? *(Khối "theo kho và hãng" trong output `lab10.eval` / `lab10.grade`, hoặc mục `by_segment` trong `report.json`.)* | Ở mốc `base`, kho `HCM` và hãng `VNX` đều có **15 lần lộ PII**, với `pass_rate = 0`. Ở `after`, `HN` có chi phí cao nhất trong hai kho được đo, **669đ/ticket** theo bảng phân khúc. Cả `HN` và `HCM` đạt `pass_rate = 1,00` và 0 lần lộ PII, nên vẫn giữ quyết định **Thu hẹp**. |
+| Quyết định (khoanh một) | Tiếp tục · **Thu hẹp** · Cải tiến thêm · Dừng |
+| Bằng chứng 1: mã lần chạy + chỉ số bắt buộc nào đạt / chưa | `R-S7-after-20261118-233356-2c66d9` đạt 5/5 ngưỡng bắt buộc: `pass_rate = 1,00 ≥ 0,96`, `pass_k = 1,00 ≥ 0,90`, hoàn sai **0đ**, lỗi hãng oan **0** và lộ PII **0**. |
+| Bằng chứng 2 | `R-S7-after-20261118-233356-2c66d9` đạt ngưỡng kinh doanh và vận hành, xử lý **6/8 ticket S7** với **1 người trực**, công suất **6 ca duyệt/giờ**. Regression trên bộ nền có **0 ca mới hỏng**. |
+| Bằng chứng 3 | Từ `R-S7-before-20261118-233356-2c66d9` qua `R-S7-prepared-20261118-233356-2c66d9` tới `R-S7-after-20261118-233356-2c66d9`, số lần lộ PII trên S7 là **30 → 0 → 0**. Hai kho `HN` và `HCM` giảm từ **25** lần lộ ở base xuống **0** ở cả hai mốc sau. |
+| Khớp dòng nào trong `decision_rule` đã ký? | Dòng **Thu hẹp**. Chỉ giữ phạm vi đã có bằng chứng đạt sau khi đo lại và chuyển ticket ngoài phạm vi sang CSKH xử lý tay. |
+| Nếu Thu hẹp: cắt kho nào / còn bao nhiêu phần trăm / mấy người trực, và ticket bị cắt đi đâu | Giữ `business.pilot_scope` ở chế độ `warehouse` cho `HN` và `HCM`. Giữ **75%** độ phủ trên S7 với **1 người trực**. Ticket ngoài hai kho, gồm `CT` và `DN` trong gói này, chuyển CSKH làm tay. |
+| Nếu Cải tiến thêm: giả thuyết cụ thể (nhánh nào của fault tree) + hạn | — |
+| Nếu Dừng: bài học ghi lại | — |
+| Ngày quyết định lại (trừ khi Dừng) | `2026-11-25` (giữ ngày rà lại đã ghi trong B8). |
+| PIC ký | `NV-TUNG` (PIC vận hành theo config và B8). Đặng Nhật Long lập quyết định v2. |
+
+| Chỉ số S7 | base | prepared | after |
+|---|---:|---:|---:|
+| Mã lần chạy | `R-S7-before-20261118-233356-2c66d9` | `R-S7-prepared-20261118-233356-2c66d9` | `R-S7-after-20261118-233356-2c66d9` |
+| Độ phủ | 100% (8/8 ticket) | 75% (6/8 ticket) | 75% (6/8 ticket) |
+| Pass rate | 0,25 | 1,0 | 1,0 |
+| Pass^k | 0,25 | 1,0 | 1,0 |
+| Lần lộ PII | 30 | 0 | 0 |
+| Chi phí/ticket | 4.405đ | 5.667đ | 5.667đ |
+| ROI | 1,27 | 0,76 | 0,76 |
+| Ca ùn | 0 | 0 | 0 |
+| Hoàn tự động/ngày | 26.000đ | 25.000đ | 25.000đ |
 
 **Chỉ ở v2**
-- Quyết định đổi hay giữ so với v1? Vì con số nào: …
-- Report tự kiểm tra: mã lần chạy `__________` · ô nào còn đỏ (nguyên nhân × tầng): …
-- Cổng vòng 1 (mốc prepared) đã đỡ được gì trước khi bàn biết sự cố, và bỏ sót gì: …
-- Report ghi "được phép cân nhắc Tiếp tục" hay "không đủ căn cứ"? Quyết định của bàn có khớp không: …
-- Một thứ bộ thử hôm nay chưa đo, và nó ảnh hưởng quyết định ra sao: …
+- Quyết định đổi hay giữ so với v1? Vì con số nào: Giữ quyết định **Thu hẹp** của v1. Trên S7, độ phủ sau sửa **75%**, PII **0**, chi phí **5.667đ/ticket** và ROI **0,76**. Nhóm duy trì hai kho đã đo.
+- Report tự kiểm tra: `R-S7-grade-20261118-233355-2c66d9` · kết quả **PASS-VISIBLE**. S7 after không còn ca hỏng hay vượt trần, regression không có ca mới hỏng. Phần kiểm thử ẩn nằm ngoài báo cáo này.
+- Cổng vòng 1 (mốc prepared) đã đỡ được gì trước khi bàn biết sự cố, và bỏ sót gì: Hai kho HN và HCM giảm từ **25** lần lộ PII ở base xuống **0** ở prepared. Guard vòng 1 lọc theo tên trường và còn rủi ro PII nằm trong giá trị hợp lệ. Vòng 2 thêm so khớp giá trị với hồ sơ người nhận, S7 after vẫn ghi **0** lần lộ.
+- Report ghi "được phép cân nhắc Tiếp tục" hay "không đủ căn cứ"? Quyết định của bàn có khớp không: Report ghi **“Được phép cân nhắc Tiếp tục”**. V2 giữ **Thu hẹp** theo luật đã ký, với bằng chứng đạt tại phạm vi HN và HCM đã đo và luồng làm tay cho ticket nằm ngoài phạm vi.
+- Một thứ bộ thử hôm nay chưa đo, và nó ảnh hưởng quyết định ra sao: Bộ thử chưa đo thông tin cá nhân bị biến đổi trong trường hợp lệ trên luồng vận đơn thật. Nhóm giữ quy mô pilot hiện tại và xem kết quả đối soát payload thật ở mốc rà tiếp theo.
 
 **Ba dòng bắt buộc** (chép nguyên ba câu này sang `submission/submission.json`, mục `three_lines`)
-1. Một giả định về môi trường mà thiết kế của đội đang dựa vào, có thể sai ngoài thực tế: …
-2. Gate của đội chỉ GIẢM khả năng hay thực sự NGĂN được tác hại? Vì sao: …
-3. Vì data là mock, cần đo lại gì trong pilot thật trước Bước đánh giá 2: …
+1. Một giả định về môi trường mà thiết kế của đội đang dựa vào, có thể sai ngoài thực tế: Thiết kế giả định trường `orders[].recipient.district` luôn là tên quận/huyện đã chuẩn hóa, nhưng người nhập hoặc đối tác đồng bộ đơn có thể ghi kèm tên, địa chỉ chi tiết hay số điện thoại.
+2. Gate của đội chỉ GIẢM khả năng hay thực sự NGĂN được tác hại? Vì sao: Allowlist ngăn `customer_note` và `recipient_contact` rời qua `notify_carrier`, đồng thời bộ dò theo hồ sơ người nhận giảm khả năng lộ qua giá trị trong các trường được phép.
+3. Vì data là mock, cần đo lại gì trong pilot thật trước Bước đánh giá 2: Trước Gate 2, đối soát payload thực gửi hãng tại HN và HCM theo kho, hãng và loại đơn quà để đếm ca lộ PII, đồng thời kiểm tỷ lệ loại nhầm ca hợp lệ, thời gian chờ duyệt, chi phí mỗi ticket và ROI trên lưu lượng thật.
