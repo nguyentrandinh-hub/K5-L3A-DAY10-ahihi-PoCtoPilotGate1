@@ -263,7 +263,7 @@ Vì sao có thể sai: Trong thực tế vận hành, người dùng hoặc nhâ
 
 <a id="c6"></a>
 
-## C6 · Câu 3.4 · Fault tree TRƯỚC khi sửa (mã lần chạy: `__________`)
+## C6 · Câu 3.4 · Fault tree TRƯỚC khi sửa (mã lần chạy: `R-S7-before-20261118-165753-aa738b`)
 
 **Khung tư duy.** Đi từ **tác hại** ngược về nguyên nhân, không đi từ lỗi mình tình cờ thấy. Mỗi tầng hỏi "điều gì phải xảy
 ra thì điều trên mới xảy ra", nối bằng **HOẶC** (một trong các nhánh là đủ) hoặc **VÀ** (phải đồng thời). Một biện pháp tốt
@@ -278,21 +278,22 @@ thường biến một nhánh HOẶC thành VÀ: tác hại chỉ còn xảy ra 
 Ít nhất hai nhánh ở hai tầng khác nhau (kỹ thuật, kinh doanh, con người); mỗi lá có bằng chứng (ticket@seed, trường dữ liệu, hoặc một dòng của report).
 
 ```
-[ĐỈNH] Tác hại: ______________________________ (cho ai: __________, đo bằng: __________)
- └─ HOẶC
- ├─ [1] ______________________________ tầng: đầu vào / data / hành động / quyền hạn / vận hành / kinh doanh
- │ └─ vì: ________________________ bằng chứng: ticket ______@seed ____
- ├─ [2] ______________________________ tầng: ______
- │ └─ vì: ________________________ bằng chứng: ticket ______@seed ____
- └─ [3] ______________________________ tầng: ______
- └─ vì: ________________________ bằng chứng: ______
+[ĐỈNH] Tác hại: Lộ tên, SĐT và địa chỉ người nhận quà cho hãng vận chuyển (cho ai: người nhận quà / bên thứ ba, đo bằng: pii_leaks = 30 ở mốc base)
+ └─ VÀ (lỗi đầu vào/data VÀ thiếu cổng chặn trước khi gửi)
+     ├─ HOẶC (nguồn dữ liệu PII đi vào payload)
+     │   ├─ [1] Khách gõ PII người nhận vào nội dung ticket và model trích thẳng vào payload (tầng: đầu vào)
+     │   │    └─ vì: không tách dữ liệu người dùng nhập khỏi dữ liệu được phép gửi hãng · bằng chứng: ticket S7-01@seed 11 (bà Nguyễn Thị Tâm, 0912345678, 14 ngõ 82 Chùa Láng)
+     │   └─ [2] Hệ thống tự kéo thông tin người nhận từ DB đơn quà tặng vào payload dù khách không gõ (tầng: data)
+     │        └─ vì: đơn có is_gift = true nên trợ lý lấy luôn orders[].recipient · bằng chứng: ticket S7-20@seed 11, S7-21@seed 11
+     └─ [3] Kênh gửi hãng không giới hạn trường theo hợp đồng trước khi thực thi notify_carrier (tầng: hành động / quyền hạn & pháp lý)
+          └─ vì: ở mốc base chưa có whitelist carrier_notice_fields trong write_gate và chưa bật legal.pii_fields_blocked_to_third_party · bằng chứng: R-S7-before-20261118-165753-aa738b (30 lần pii_leaks)
 ```
 
 | Lá | Specification bị vi phạm (phần mềm phải làm gì) | Giả định môi trường đã sai (thế giới ngoài phần mềm) |
 |---|---|---|
-| [1] | | |
-| [2] | | |
-| [3] | | |
+| [1] | Nội dung `ticket.text` do khách nhập không được phép truyền thẳng vào `payload` của `notify_carrier` ngoài 4 trường trong `carrier_notice_fields`. | Khách không gõ thông tin cá nhân của người khác (SĐT, địa chỉ nhà) vào tin nhắn khiếu nại giao trễ. |
+| [2] | `orders[].recipient` của đơn quà tặng (`is_gift = true`) chỉ dùng nội bộ, không được đưa vào `notify_carrier`. | Người nhận quà được coi là đã biết/đồng ý chia sẻ SĐT, địa chỉ với hãng vận chuyển như người đặt hàng. |
+| [3] | Trước khi gọi `notify_carrier`, hệ thống phải lọc bỏ mọi trường ngoài `policies[].carrier_notice_fields` (`order_id`, `parcel_id`, `district`, `delay_days`). | Mọi thông báo tạo từ trợ lý đều mặc định chỉ chứa các trường vận đơn an toàn theo hợp đồng. |
 
 **Ví dụ mẫu một nhánh (bộ nền, đừng chép):** đỉnh "hãng VNX nhận lỗi oan cho đơn O-1002" ← [1] agent dùng độ trễ 5 ngày ←
 model lấy số trong ticket đè lên DB (`T-002@55`). Spec bị vi phạm: độ trễ dùng để ghi lỗi phải lấy từ tracking DB. Giả định
