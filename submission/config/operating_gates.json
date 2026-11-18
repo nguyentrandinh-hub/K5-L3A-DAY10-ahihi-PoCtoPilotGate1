@@ -1,0 +1,39 @@
+{
+  "_huong_dan": "Cổng kinh doanh, vận hành, pháp lý của nhóm ahihi. Xem docs/guide.md.",
+  "business": {
+    "daily_refund_cap_vnd": 1600000,
+    "cost_budget_per_ticket_vnd": 1350,
+    "pilot_scope": {
+      "mode": "warehouse",
+      "warehouses": ["HN", "HCM"],
+      "percent": 100
+    },
+    "roi_min": 0.15
+  },
+  "operations": {
+    "pic": "NV-TUNG",
+    "approver_id": "NV-HANH",
+    "reviewers_on_shift": 1,
+    "review_capacity_per_hour": 6,
+    "max_queue_wait_minutes": 60,
+    "stop_conditions": [
+      "Nếu xác nhận hoàn sai, NV-TUNG tắt issue_refund.",
+      "Nếu xác nhận ghi lỗi oan cho hãng, NV-TUNG tắt file_carrier_fault.",
+      "Nếu xác nhận lộ dữ liệu qua thông báo hãng, NV-TUNG tắt notify_carrier.",
+      "Nếu có ca ùn hoặc thời gian chờ chạm 60 phút, thu hẹp phạm vi và chuyển ca chờ cho CSKH."
+    ],
+    "alert_channel": "#logix-refund-ops-alerts",
+    "decision_note": false,
+    "review_sampling_pct": 0
+  },
+  "legal": {
+    "pii_fields_blocked_to_third_party": [
+      "customer_note",
+      "recipient_contact",
+      "name",
+      "phone",
+      "street"
+    ],
+    "carrier_fault_requires_recorded_cause": true
+  }
+}
