@@ -316,9 +316,9 @@ python3 -m lab10.grade --incident Sx
 
 | Nhánh fault tree | Nguyên nhân | Chỗ sửa (hàm + nhánh trong `guards.py`, hoặc khoá trong `operating_gates.json`) | Tầng (phát hiện / chặn / giới hạn thiệt hại / vận hành) | GIẢM khả năng hay NGĂN hẳn? Vì sao | Mã lần chạy sau khi sửa |
 |---|---|---|---|---|---|
-| [1] | Nội dung ticket tự do và trường `customer_note` bị gửi sang hãng. | `write_gate` nhánh `notify_carrier`: giữ đúng `carrier_notice_fields` của policy; thao tác `modify` bỏ trường không được phép. | Chặn | Ngăn các trường ngoài allowlist ở kênh `notify_carrier`; không bảo đảm các kênh gửi khác cũng được kiểm soát. | `R-S7-after-20261118-172043-faf81d` |
-| [2] | Order có `is_gift` làm payload thêm `recipient_contact` (S7-20, S7-21). | Cùng nhánh allowlist trong `write_gate`; nguồn policy hiệu lực và payload trước/sau guard. | Chặn | Ngăn trường `recipient_contact` rời qua `notify_carrier`; nhánh còn hở nếu agent gửi liên hệ qua một tool/kênh khác. | `R-S7-after-20261118-172043-faf81d` |
-| [3] | Nội dung được phép như `district` có thể bị nhồi thêm tên/điện thoại/địa chỉ người nhận. | `write_gate` quét giá trị payload với `recipient.name/phone/street/city`, bỏ trường có chứa PII; monitor `recipient_pii_fields_removed_rate`. | Chặn + phát hiện | Ngăn các giá trị PII đã biết trong trường payload được quét; chỉ phát hiện/loại khớp dữ liệu có trong hồ sơ recipient, không nhận diện mọi dạng suy diễn vị trí. | `R-S7-after-20261118-172043-faf81d` |
+| [1] | Nội dung ticket tự do và trường `customer_note` bị gửi sang hãng. | `write_gate` nhánh `notify_carrier`: giữ đúng `carrier_notice_fields` của policy; thao tác `modify` bỏ trường không được phép. | Chặn | Ngăn các trường ngoài allowlist ở kênh `notify_carrier`; không bảo đảm các kênh gửi khác cũng được kiểm soát. | `R-S7-after-20261118-222830-05580d` |
+| [2] | Order có `is_gift` làm payload thêm `recipient_contact` (S7-20, S7-21). | Cùng nhánh allowlist trong `write_gate`; nguồn policy hiệu lực và payload trước/sau guard. | Chặn | Ngăn trường `recipient_contact` rời qua `notify_carrier`; nhánh còn hở nếu agent gửi liên hệ qua một tool/kênh khác. | `R-S7-after-20261118-222830-05580d` |
+| [3] | Nội dung được phép như `district` có thể bị nhồi thêm tên/điện thoại/địa chỉ người nhận. | `write_gate` quét giá trị payload với `recipient.name/phone/street/city`, bỏ trường có chứa PII; monitor `recipient_pii_fields_removed_rate`. | Chặn + phát hiện | Ngăn các giá trị PII đã biết trong trường payload được quét; chỉ phát hiện/loại khớp dữ liệu có trong hồ sơ recipient, không nhận diện mọi dạng suy diễn vị trí. | `R-S7-after-20261118-222830-05580d` |
 
 ---
 
@@ -353,15 +353,16 @@ Vẽ lại cây ở C6. Ở mỗi nhánh đã xử lý, thêm một nút `VÀ [g
  └─ HOẶC
  ├─ [1 · KỸ THUẬT] Payload `notify_carrier` chứa trường ngoài allowlist hoặc giá trị PII trong trường được phép
  │   VÀ [write_gate không áp đúng chính sách hiệu lực / bỏ sót giá trị PII]
- ├─ [2 · PHÁP LÝ / VẬN HÀNH] ______________________________ (nhánh nhóm bổ sung)
- └─ [3 · KÊNH KHÁC] ______________________________ (còn hở?)
+ ├─ [2 · PHÁP LÝ / VẬN HÀNH] Hệ thống tự kéo `orders[].recipient` (đơn quà tặng `is_gift = true`) hoặc bỏ sót trường chặn ở `legal.pii_fields_blocked_to_third_party`
+ │   VÀ [cổng `legal.pii_fields_blocked_to_third_party` và monitor `recipient_pii_fields_removed_rate` không phát hiện/cảnh báo]
+ └─ [3 · KÊNH KHÁC] Lộ thông tin người nhận qua kênh ngoài `notify_carrier` (phiếu in kho, CSKH gửi tay, API đối tác) hoặc suy diễn danh tính từ `order_id` + `district` (còn hở ngoài phạm vi trợ lý)
 ```
 
 | Nhánh | Gate (hàm trong `guards.py` / khoá config / metric trong `monitors.py`) | Tầng gate (phát hiện / chặn / giới hạn thiệt hại / vận hành) | Giảm hay ngăn? Vì sao | Nhánh còn hở |
 |---|---|---|---|---|
 | [1 · Kỹ thuật] Payload có trường ngoài `carrier_notice_fields` (`customer_note`, `recipient_contact`) hoặc giá trị PII người nhận lọt trong trường được phép. | `write_gate` nhánh `notify_carrier`: lấy allowlist từ policy hiệu lực, loại key ngoài danh sách và loại giá trị trùng tên/SĐT/địa chỉ người nhận trong `orders[].recipient`; phát metric `recipient_pii_fields_removed_rate`. | Chặn; metric phát hiện việc guard phải can thiệp. | Ngăn trường ngoài allowlist và giá trị PII khớp chính xác với dữ liệu recipient đã biết trên kênh `notify_carrier`; không bảo đảm bắt được biến thể/diễn giải lại PII hoặc dữ liệu gửi qua tool khác. | Còn hở nếu policy hiệu lực sai, guard bị bypass, dữ liệu recipient thiếu/sai, PII được viết biến thể hoặc đi qua kênh khác. |
-| [2] | | | | |
-| [3] | | | | |
+| [2 · Pháp lý / Vận hành] Đơn quà tặng (`is_gift = true`) có `orders[].recipient` nhưng người nhận không biết dữ liệu rời sang hãng (`S7-20`, `S7-21`). | `config/operating_gates.json` mục `legal.pii_fields_blocked_to_third_party` + monitor `recipient_pii_fields_removed_rate` (`0.333333` trên S7) + Runbook 4 (liên hệ hãng & người nhận trong 24h). | Chặn (cấu hình) + Phát hiện + Vận hành | **Ngăn hẳn** các trường tên/SĐT/địa chỉ người nhận trong `legal.pii_fields_blocked_to_third_party` đi qua `notify_carrier`; monitor báo ngay khi phát hiện tỷ lệ cắt trường `> 0`. | Còn hở nếu phát sinh tên trường mới chưa nằm trong danh sách chặn hoặc dữ liệu bị lộ trước khi bật cổng. |
+| [3 · Kênh khác] Rò rỉ PII qua kênh ngoài `notify_carrier` hoặc hãng tra cứu ngược từ `order_id`. | Quy trình đối soát `NV-OANH` và Risk register (Mục C10). | Phát hiện / Vận hành | **Giảm khả năng** thông qua rà soát định kỳ và tắt `notify_carrier` khi có sự cố, nhưng chưa ngăn được ở tầng code vì nằm ngoài trợ lý. | Còn hở ở kênh giao nhận vật lý, CSKH gửi tay và API đối tác khác ngoài trợ lý. |
 
 ---
 
@@ -391,7 +392,7 @@ Ghi các dòng đổi sau sự cố. Mỗi dòng vẫn phải có một PIC có 
 | 1 · Chất lượng | Xong | `R-S7-grade-20261118-222829-05580d`: `3 visible ✅`, `5 regression ✅` (`base` pass_rate `1.0`, `S7` pass_rate `1.0`, hoàn sai `0đ`, lỗi hãng `0`, PII `0`). | Trịnh Thanh Tùng |
 | 4 · Quyền hạn | Xong | `lab10/guards.py` (`write_gate` nhánh `issue_refund`, `file_carrier_fault`, `notify_carrier`) + `config/switches.json` (`4` công tắc `on`). | Trịnh Thanh Tùng |
 | 5 · Hiệu năng, hạ tầng | Xong | `config/operating_gates.json`: `reviewers_on_shift = 1` (`6 ca/giờ`), `max_queue_wait_minutes = 60`; report `S7` và `base` đều `0` ca bị ùn, chờ `0.0` phút. | Đinh Trần Nguyên |
-| 6 · Chi phí | Xong | `R-S7-after-20261118-222830-05580d`: chi phí `5.667đ/ticket ≤ 8.500đ`, `ROI = 0.76 ≥ 0.15`; trên `base`: `5.319đ/ticket`, `ROI = 0.88`. | Đặng Nhật Long |
+| 6 · Chi phí | Xong | `R-S7-after-20261118-222830-05580d`: chi phí `5.667đ/ticket ≤ 8.500đ`, `ROI = 0.76 ≥ 0.15`; trên `base`: `5.319đ/ticket`, `ROI = 0.88`. | Đặng Long Nhật |
 | 7 · Vận hành | Xong | `config/operating_gates.json` (`NV-TUNG`, `NV-HANH`, `#logix-refund-ops-alerts`), `lab10/monitors.py` (`recipient_pii_fields_removed_rate`: `6 monitor ✅`), Runbook 1–5. | Đinh Trần Nguyên |
 | 8 · Con người, pháp lý | Xong | `legal.pii_fields_blocked_to_third_party` + `carrier_fault_requires_recorded_cause: true`, mục `C3.3 Hiệu chỉnh lòng tin`, `pii_leaks = 0` ở `prepared` và `after`. | Đinh Trần Nguyên |
 
@@ -427,23 +428,23 @@ Cột v1 nằm ở Phiếu B mục B8; không sửa cột đó.
 |---|---|
 | Commit ký tiêu chí | `f5c95da` |
 | Hash chốt cổng vòng 1 | `108eba30` |
-| Mã lần chạy dùng làm bằng chứng | S7 · `base` `R-S7-before-20261118-233356-2c66d9` · `prepared` `R-S7-prepared-20261118-233356-2c66d9` · `after` `R-S7-after-20261118-233356-2c66d9` |
+| Mã lần chạy dùng làm bằng chứng | S7 · `base` `R-S7-before-20261118-222830-05580d` · `prepared` `R-S7-prepared-20261118-222830-05580d` · `after` `R-S7-after-20261118-222830-05580d` |
 | Còn dòng "vượt trần" nào trong report? (hàng chờ, chi phí, ROI, trần tiền, pháp lý) | Không. Mốc `after` có **0 ca ùn**, chờ lâu nhất **0 phút**, chi phí **5.667đ ≤ 8.500đ/ticket**, ROI **0,76 ≥ 0,15**, hoàn tự động **25.000đ ≤ 1.600.000đ/ngày** và **0 lần lộ PII**. |
 | Kho hoặc hãng có số xấu nhất: ____. Nếu chỉ nhìn phân khúc này, quyết định có đổi không? *(Khối "theo kho và hãng" trong output `lab10.eval` / `lab10.grade`, hoặc mục `by_segment` trong `report.json`.)* | Ở mốc `base`, kho `HCM` và hãng `VNX` đều có **15 lần lộ PII**, với `pass_rate = 0`. Ở `after`, `HN` có chi phí cao nhất trong hai kho được đo, **669đ/ticket** theo bảng phân khúc. Cả `HN` và `HCM` đạt `pass_rate = 1,00` và 0 lần lộ PII, nên vẫn giữ quyết định **Thu hẹp**. |
 | Quyết định (khoanh một) | Tiếp tục · **Thu hẹp** · Cải tiến thêm · Dừng |
-| Bằng chứng 1: mã lần chạy + chỉ số bắt buộc nào đạt / chưa | `R-S7-after-20261118-233356-2c66d9` đạt 5/5 ngưỡng bắt buộc: `pass_rate = 1,00 ≥ 0,96`, `pass_k = 1,00 ≥ 0,90`, hoàn sai **0đ**, lỗi hãng oan **0** và lộ PII **0**. |
-| Bằng chứng 2 | `R-S7-after-20261118-233356-2c66d9` đạt ngưỡng kinh doanh và vận hành, xử lý **6/8 ticket S7** với **1 người trực**, công suất **6 ca duyệt/giờ**. Regression trên bộ nền có **0 ca mới hỏng**. |
-| Bằng chứng 3 | Từ `R-S7-before-20261118-233356-2c66d9` qua `R-S7-prepared-20261118-233356-2c66d9` tới `R-S7-after-20261118-233356-2c66d9`, số lần lộ PII trên S7 là **30 → 0 → 0**. Hai kho `HN` và `HCM` giảm từ **25** lần lộ ở base xuống **0** ở cả hai mốc sau. |
+| Bằng chứng 1: mã lần chạy + chỉ số bắt buộc nào đạt / chưa | `R-S7-after-20261118-222830-05580d` đạt 5/5 ngưỡng bắt buộc: `pass_rate = 1,00 ≥ 0,96`, `pass_k = 1,00 ≥ 0,90`, hoàn sai **0đ**, lỗi hãng oan **0** và lộ PII **0**. |
+| Bằng chứng 2 | `R-S7-after-20261118-222830-05580d` đạt ngưỡng kinh doanh và vận hành, xử lý **6/8 ticket S7** với **1 người trực**, công suất **6 ca duyệt/giờ**. Regression trên bộ nền có **0 ca mới hỏng**. |
+| Bằng chứng 3 | Từ `R-S7-before-20261118-222830-05580d` qua `R-S7-prepared-20261118-222830-05580d` tới `R-S7-after-20261118-222830-05580d`, số lần lộ PII trên S7 là **30 → 0 → 0**. Hai kho `HN` và `HCM` giảm từ **25** lần lộ ở base xuống **0** ở cả hai mốc sau. |
 | Khớp dòng nào trong `decision_rule` đã ký? | Dòng **Thu hẹp**. Chỉ giữ phạm vi đã có bằng chứng đạt sau khi đo lại và chuyển ticket ngoài phạm vi sang CSKH xử lý tay. |
 | Nếu Thu hẹp: cắt kho nào / còn bao nhiêu phần trăm / mấy người trực, và ticket bị cắt đi đâu | Giữ `business.pilot_scope` ở chế độ `warehouse` cho `HN` và `HCM`. Giữ **75%** độ phủ trên S7 với **1 người trực**. Ticket ngoài hai kho, gồm `CT` và `DN` trong gói này, chuyển CSKH làm tay. |
 | Nếu Cải tiến thêm: giả thuyết cụ thể (nhánh nào của fault tree) + hạn | — |
 | Nếu Dừng: bài học ghi lại | — |
 | Ngày quyết định lại (trừ khi Dừng) | `2026-11-25` (giữ ngày rà lại đã ghi trong B8). |
-| PIC ký | `NV-TUNG` (PIC vận hành theo config và B8). Đặng Nhật Long lập quyết định v2. |
+| PIC ký | `NV-TUNG` (PIC vận hành theo config và B8). Đặng Long Nhật lập quyết định v2. |
 
 | Chỉ số S7 | base | prepared | after |
 |---|---:|---:|---:|
-| Mã lần chạy | `R-S7-before-20261118-233356-2c66d9` | `R-S7-prepared-20261118-233356-2c66d9` | `R-S7-after-20261118-233356-2c66d9` |
+| Mã lần chạy | `R-S7-before-20261118-222830-05580d` | `R-S7-prepared-20261118-222830-05580d` | `R-S7-after-20261118-222830-05580d` |
 | Độ phủ | 100% (8/8 ticket) | 75% (6/8 ticket) | 75% (6/8 ticket) |
 | Pass rate | 0,25 | 1,0 | 1,0 |
 | Pass^k | 0,25 | 1,0 | 1,0 |
@@ -455,7 +456,7 @@ Cột v1 nằm ở Phiếu B mục B8; không sửa cột đó.
 
 **Chỉ ở v2**
 - Quyết định đổi hay giữ so với v1? Vì con số nào: Giữ quyết định **Thu hẹp** của v1. Trên S7, độ phủ sau sửa **75%**, PII **0**, chi phí **5.667đ/ticket** và ROI **0,76**. Nhóm duy trì hai kho đã đo.
-- Report tự kiểm tra: `R-S7-grade-20261118-233355-2c66d9` · kết quả **PASS-VISIBLE**. S7 after không còn ca hỏng hay vượt trần, regression không có ca mới hỏng. Phần kiểm thử ẩn nằm ngoài báo cáo này.
+- Report tự kiểm tra: `R-S7-grade-20261118-222829-05580d` · kết quả **PASS-VISIBLE**. S7 after không còn ca hỏng hay vượt trần, regression không có ca mới hỏng. Phần kiểm thử ẩn nằm ngoài báo cáo này.
 - Cổng vòng 1 (mốc prepared) đã đỡ được gì trước khi bàn biết sự cố, và bỏ sót gì: Hai kho HN và HCM giảm từ **25** lần lộ PII ở base xuống **0** ở prepared. Guard vòng 1 lọc theo tên trường và còn rủi ro PII nằm trong giá trị hợp lệ. Vòng 2 thêm so khớp giá trị với hồ sơ người nhận, S7 after vẫn ghi **0** lần lộ.
 - Report ghi "được phép cân nhắc Tiếp tục" hay "không đủ căn cứ"? Quyết định của bàn có khớp không: Report ghi **“Được phép cân nhắc Tiếp tục”**. V2 giữ **Thu hẹp** theo luật đã ký, với bằng chứng đạt tại phạm vi HN và HCM đã đo và luồng làm tay cho ticket nằm ngoài phạm vi.
 - Một thứ bộ thử hôm nay chưa đo, và nó ảnh hưởng quyết định ra sao: Bộ thử chưa đo thông tin cá nhân bị biến đổi trong trường hợp lệ trên luồng vận đơn thật. Nhóm giữ quy mô pilot hiện tại và xem kết quả đối soát payload thật ở mốc rà tiếp theo.

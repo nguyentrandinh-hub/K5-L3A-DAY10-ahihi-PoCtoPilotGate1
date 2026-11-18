@@ -1,12 +1,16 @@
 {
-  "team": "",
-  "members": [],
-  "incident": "",
-  "decision_v1": "",
-  "decision_v2": "",
+  "team": "K5-L3A-DAY10-ahihi-PoCtoPilotGate1",
+  "members": [
+    "DinhTranNguyen-2A202603517",
+    "TrinhThanhTung-2A202603456",
+    "DangLongNhat-2A202603483"
+  ],
+  "incident": "S7",
+  "decision_v1": "Thu hẹp",
+  "decision_v2": "Thu hẹp",
   "three_lines": {
-    "environment_assumption": "",
-    "reduce_or_prevent": "",
-    "measure_in_pilot": ""
+    "environment_assumption": "Thiết kế giả định trường orders[].recipient.district luôn là tên quận/huyện đã chuẩn hóa, nhưng người nhập hoặc đối tác đồng bộ đơn có thể ghi kèm tên, địa chỉ chi tiết hay số điện thoại.",
+    "reduce_or_prevent": "Allowlist ngăn customer_note và recipient_contact rời qua notify_carrier, đồng thời bộ dò theo hồ sơ người nhận giảm khả năng lộ qua giá trị trong các trường được phép.",
+    "measure_in_pilot": "Trước Gate 2, đối soát payload thực gửi hãng tại HN và HCM theo kho, hãng và loại đơn quà để đếm ca lộ PII, đồng thời kiểm tỷ lệ loại nhầm ca hợp lệ, thời gian chờ duyệt, chi phí mỗi ticket và ROI trên lưu lượng thật."
   }
 }
