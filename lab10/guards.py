@@ -39,4 +39,61 @@ def pre_guard(ctx):
 
 def write_gate(ctx, action):
     # action = {"tool": "issue_refund", "ticket_id":..., "order_id":..., "amount_vnd":..., "payer":..., ...}
+    tool = action.get("tool")
+    order_id = action.get("order_id")
+
+    # Do not let a customer-provided delay override tracking before an irreversible write.
+    if tool in ("issue_refund", "file_carrier_fault"):
+        order = ctx.tools.lookup_order(order_id) if order_id else None
+        if order is None:
+            ctx.log("guard_missing_order", tool=tool, order_id=order_id)
+            return Verdict.escalate("không tra được đơn hàng nguồn để xác minh trước khi ghi")
+        try:
+            parcel = H.ticket_parcel(order, ctx.ticket, ctx.as_of or ctx.tools.as_of)
+            db_delay = H.db_delay_days(parcel, ctx.as_of or ctx.tools.as_of)
+        except (KeyError, TypeError, ValueError):
+            ctx.log("guard_incomplete_tracking", tool=tool, order_id=order_id)
+            return Verdict.escalate("dữ liệu tracking thiếu hoặc không hợp lệ; cần người xác minh")
+
+        proposed_delay = action.get("delay_days")
+        if proposed_delay is None:
+            proposed_delay = next((e.get("delay_days_used") for e in reversed(ctx.events)
+                                   if e.get("type") == "proposal"), None)
+        if proposed_delay is not None and proposed_delay != db_delay:
+            ctx.log("guard_tracking_delay_mismatch", tool=tool, order_id=order_id,
+                    tracking_delay_days=db_delay, proposed_delay_days=proposed_delay)
+            return Verdict.escalate("số ngày trễ trong quyết định không khớp tracking; cần người duyệt")
+
+    # A carrier fault must be tied to the recorded parcel, carrier and an allowed cause.
+    if tool == "file_carrier_fault":
+        order = ctx.tools.lookup_order(order_id)
+        parcel = next((p for p in order.get("parcels", [])
+                       if p.get("parcel_id") == action.get("parcel_id")), None)
+        policies = ctx.tools.lookup_policies()
+        policy = H.effective_policy(policies, ctx.as_of or ctx.tools.as_of)
+        if parcel is None or policy is None:
+            ctx.log("guard_unverified_carrier_fault", order_id=order_id,
+                    parcel_id=action.get("parcel_id"))
+            return Verdict.deny("không xác minh được kiện hoặc chính sách hiệu lực để ghi lỗi hãng")
+        if (action.get("carrier_id") != parcel.get("carrier_id") or
+                parcel.get("delay_cause") not in policy.get("fault_causes", [])):
+            ctx.log("guard_unverified_carrier_fault", order_id=order_id,
+                    parcel_id=action.get("parcel_id"), recorded_cause=parcel.get("delay_cause"))
+            return Verdict.deny("tracking không xác nhận hãng và nguyên nhân đủ điều kiện ghi lỗi")
+
+    # Limit outbound carrier notices to fields approved by the effective policy.
+    if tool == "notify_carrier":
+        policies = ctx.tools.lookup_policies()
+        policy = H.effective_policy(policies, ctx.as_of or ctx.tools.as_of)
+        if policy is None:
+            return Verdict.deny("không xác định được chính sách hiệu lực cho thông báo hãng")
+        allowed = set(policy.get("carrier_notice_fields", []))
+        payload = action.get("payload") or {}
+        safe_payload = {key: value for key, value in payload.items() if key in allowed}
+        if safe_payload != payload:
+            removed = sorted(set(payload) - set(safe_payload))
+            ctx.log("guard_carrier_notice_fields_removed", removed_fields=removed)
+            return Verdict.modify("đã loại trường không được chính sách cho phép gửi hãng",
+                                  payload=safe_payload)
+
     return Verdict.allow()
