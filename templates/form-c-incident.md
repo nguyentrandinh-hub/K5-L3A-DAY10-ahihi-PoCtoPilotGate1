@@ -344,21 +344,22 @@ Thẻ S5 dùng mục này cho một con số kinh doanh: chi phí mỗi ticket t
 
 <a id="c9"></a>
 
-## C9 · Câu 3.7 · Fault tree SAU khi sửa (mã lần chạy: `__________`)
+## C9 · Câu 3.7 · Fault tree SAU khi sửa (mã lần chạy: `R-S7-after-20261118-222830-05580d`)
 
 Vẽ lại cây ở C6. Ở mỗi nhánh đã xử lý, thêm một nút `VÀ [gate … hỏng]` và ghi:
 
 ```
-[ĐỈNH] ______________________________
+[ĐỈNH] Lộ PII người nhận quà cho hãng vận chuyển
  └─ HOẶC
- ├─ [1] ______________ VÀ [gate ______ hỏng]
- ├─ [2] ______________ VÀ [gate ______ hỏng]
- └─ [3] ______________ (còn hở?)
+ ├─ [1 · KỸ THUẬT] Payload `notify_carrier` chứa trường ngoài allowlist hoặc giá trị PII trong trường được phép
+ │   VÀ [write_gate không áp đúng chính sách hiệu lực / bỏ sót giá trị PII]
+ ├─ [2 · PHÁP LÝ / VẬN HÀNH] ______________________________ (nhánh nhóm bổ sung)
+ └─ [3 · KÊNH KHÁC] ______________________________ (còn hở?)
 ```
 
 | Nhánh | Gate (hàm trong `guards.py` / khoá config / metric trong `monitors.py`) | Tầng gate (phát hiện / chặn / giới hạn thiệt hại / vận hành) | Giảm hay ngăn? Vì sao | Nhánh còn hở |
 |---|---|---|---|---|
-| [1] | | | | |
+| [1 · Kỹ thuật] Payload có trường ngoài `carrier_notice_fields` (`customer_note`, `recipient_contact`) hoặc giá trị PII người nhận lọt trong trường được phép. | `write_gate` nhánh `notify_carrier`: lấy allowlist từ policy hiệu lực, loại key ngoài danh sách và loại giá trị trùng tên/SĐT/địa chỉ người nhận trong `orders[].recipient`; phát metric `recipient_pii_fields_removed_rate`. | Chặn; metric phát hiện việc guard phải can thiệp. | Ngăn trường ngoài allowlist và giá trị PII khớp chính xác với dữ liệu recipient đã biết trên kênh `notify_carrier`; không bảo đảm bắt được biến thể/diễn giải lại PII hoặc dữ liệu gửi qua tool khác. | Còn hở nếu policy hiệu lực sai, guard bị bypass, dữ liệu recipient thiếu/sai, PII được viết biến thể hoặc đi qua kênh khác. |
 | [2] | | | | |
 | [3] | | | | |
 
