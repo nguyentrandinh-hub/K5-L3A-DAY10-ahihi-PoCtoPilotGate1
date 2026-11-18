@@ -33,6 +33,28 @@ from . import helpers as H  # noqa: F401
 from .tools import Verdict
 
 
+def _contains_recipient_pii(value, pii_values):
+    """Detect exact recipient identifiers embedded in outbound strings/containers."""
+    if isinstance(value, dict):
+        return any(_contains_recipient_pii(v, pii_values) for v in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(_contains_recipient_pii(v, pii_values) for v in value)
+    if not isinstance(value, str):
+        return False
+    text = value.casefold()
+    digits = H.digits(value)
+    for raw in pii_values:
+        if not isinstance(raw, str) or not raw.strip():
+            continue
+        candidate = raw.strip()
+        if len(candidate) >= 5 and candidate.casefold() in text:
+            return True
+        number = H.digits(candidate)
+        if len(number) >= 7 and number in digits:
+            return True
+    return False
+
+
 def pre_guard(ctx):
     return Verdict.allow()
 
@@ -90,9 +112,18 @@ def write_gate(ctx, action):
         allowed = set(policy.get("carrier_notice_fields", []))
         payload = action.get("payload") or {}
         safe_payload = {key: value for key, value in payload.items() if key in allowed}
+        order = ctx.tools.lookup_order(order_id) if order_id else None
+        recipient = (order or {}).get("recipient") or {}
+        pii_values = [recipient.get(key) for key in ("name", "phone", "street", "city")]
+        value_pii_fields = sorted(key for key, value in safe_payload.items()
+                                  if _contains_recipient_pii(value, pii_values))
+        for key in value_pii_fields:
+            safe_payload.pop(key, None)
+
         if safe_payload != payload:
             removed = sorted(set(payload) - set(safe_payload))
-            ctx.log("guard_carrier_notice_fields_removed", removed_fields=removed)
+            ctx.log("guard_carrier_notice_fields_removed", removed_fields=removed,
+                    recipient_pii_value_fields=value_pii_fields)
             return Verdict.modify("đã loại trường không được chính sách cho phép gửi hãng",
                                   payload=safe_payload)
 

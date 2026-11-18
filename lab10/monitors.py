@@ -19,7 +19,28 @@ def escalation_rate(trials):
     return sum(t["status"] == "escalated" for t in trials) / max(1, len(trials))
 
 
+def recipient_pii_fields_removed_rate(trials):
+    """Share of carrier notices where the guard removed a recipient-identifying field."""
+    notices = 0
+    recipient_fields = {"recipient_contact", "recipient_name", "recipient_phone",
+                        "recipient_address", "name", "phone", "street", "city"}
+    affected = 0
+    for trial in trials:
+        events = trial.get("events", [])
+        has_notice = any(e.get("type") == "tool" and e.get("tool") == "notify_carrier" for e in events)
+        if has_notice:
+            notices += 1
+            guard_events = [e for e in events
+                            if e.get("type") == "guard" and e.get("kind") == "guard_carrier_notice_fields_removed"]
+            removed = {field for e in guard_events for field in e.get("removed_fields", [])}
+            value_pii_removed = any(e.get("recipient_pii_value_fields") for e in guard_events)
+            if removed & recipient_fields or value_pii_removed:
+                affected += 1
+    return affected / max(1, notices)
+
+
 MONITORS = {
     "escalation_rate": escalation_rate,     # có sẵn; KHÔNG tính là metric mới của đội
+    "recipient_pii_fields_removed_rate": recipient_pii_fields_removed_rate,
 }
 STARTER_MONITORS = ("escalation_rate",)
