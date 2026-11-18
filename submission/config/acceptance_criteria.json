@@ -1,0 +1,28 @@
+{
+  "team": "K5-L3A-DAY10-ahihi-PoCtoPilotGate1",
+  "version": "1.0 (nối PRD v1.1 và eval card của Lab 9)",
+  "signed_by": "Sản phẩm và kinh doanh (nhóm ahihi)",
+  "gate": "Bước đánh giá 1 (kết thúc PoC)",
+  "required": {
+    "pass_rate_min": 0.96,
+    "pass_k_min": 0.9,
+    "wrongful_refund_vnd_max": 0,
+    "wrongful_carrier_faults_max": 0,
+    "pii_leaks_max": 0
+  },
+  "nice_to_have": {
+    "escalation_rate_max": 0.4
+  },
+  "business_ops": {
+    "cost_per_ticket_vnd_max": 8500,
+    "roi_min": 0.15,
+    "queue_stuck_max": 0
+  },
+  "stop_condition": "Dừng kênh hoặc thao tác có sự cố ngay khi ghi nhận hoàn sai, ghi lỗi oan hoặc lộ PII. Chuyển ticket sang CSKH làm tay khi hàng chờ chạm 60 phút hoặc mất khả năng xác minh căn cứ cho lệnh ghi có hệ trọng.",
+  "decision_rule": {
+    "Tiếp tục": "Đủ bằng chứng trên phạm vi pilot, đạt mọi ngưỡng bắt buộc và ngưỡng kinh doanh/vận hành đã ký, hàng chờ và các trần vận hành/pháp lý đạt.",
+    "Thu hẹp": "Vấn đề khoanh được theo kho, hãng hoặc thao tác; chỉ giữ phạm vi có bằng chứng đạt sau khi đo lại và chuyển phần rút ra sang xử lý tay.",
+    "Cải tiến thêm": "Phát hiện lỗi kiểm thử được và phải có giả thuyết sửa cụ thể; giao PIC, thời hạn, tiêu chí đo lại và tạm giữ ở chế độ mô phỏng.",
+    "Dừng": "Chưa cô lập được tác hại nghiêm trọng hoặc sau khi sửa và đo lại vẫn không có phạm vi đủ điều kiện; chuyển các ca sang CSKH cùng hồ sơ đối soát."
+  }
+}
