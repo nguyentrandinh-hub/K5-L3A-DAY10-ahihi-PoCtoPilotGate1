@@ -349,18 +349,19 @@ Thẻ S5 dùng mục này cho một con số kinh doanh: chi phí mỗi ticket t
 Vẽ lại cây ở C6. Ở mỗi nhánh đã xử lý, thêm một nút `VÀ [gate … hỏng]` và ghi:
 
 ```
-[ĐỈNH] Lộ tên, SĐT và địa chỉ người nhận quà cho hãng vận chuyển (pii_leaks = 0 ở mốc after)
+[ĐỈNH] Lộ PII người nhận quà cho hãng vận chuyển
  └─ HOẶC
-     ├─ [1] Khách gõ PII người nhận vào ticket.text (S7-01@11) VÀ [gate write_gate/notify_carrier allowlist + legal.pii_fields_blocked_to_third_party hỏng]
-     ├─ [2] Hệ thống tự kéo orders[].recipient khi is_gift = true (S7-20@11, S7-21@11) VÀ [gate write_gate/notify_carrier allowlist + monitor recipient_pii_fields_removed_rate hỏng]
-     └─ [3] Kênh gửi hãng khác ngoài notify_carrier hoặc suy diễn danh tính từ tổ hợp district + order_id (còn hở ngoài phạm vi notify_carrier)
+ ├─ [1 · KỸ THUẬT] Payload `notify_carrier` chứa trường ngoài allowlist hoặc giá trị PII trong trường được phép
+ │   VÀ [write_gate không áp đúng chính sách hiệu lực / bỏ sót giá trị PII]
+ ├─ [2 · PHÁP LÝ / VẬN HÀNH] ______________________________ (nhánh nhóm bổ sung)
+ └─ [3 · KÊNH KHÁC] ______________________________ (còn hở?)
 ```
 
 | Nhánh | Gate (hàm trong `guards.py` / khoá config / metric trong `monitors.py`) | Tầng gate (phát hiện / chặn / giới hạn thiệt hại / vận hành) | Giảm hay ngăn? Vì sao | Nhánh còn hở |
 |---|---|---|---|---|
-| [1] | `write_gate` nhánh `notify_carrier` (allowlist `carrier_notice_fields` + lọc giá trị PII) + `legal.pii_fields_blocked_to_third_party` + `recipient_pii_fields_removed_rate` | Chặn + Phát hiện | **Ngăn hẳn** ở kênh `notify_carrier` về mặt cấu trúc trường: chỉ 4 trường trong `carrier_notice_fields` (`order_id`, `parcel_id`, `district`, `delay_days`) được phép đi qua. | Nếu PII bị nhập lẫn vào trường cho phép dưới dạng không theo mẫu nhận diện, hoặc đi qua kênh khác ngoài `notify_carrier`. |
-| [2] | `write_gate` nhánh `notify_carrier` (`Verdict.modify` loại bỏ `recipient_contact`, `recipient_name`, `recipient_phone`, `recipient_address`) + monitor `recipient_pii_fields_removed_rate` (`0.333333` trên S7) | Chặn + Phát hiện | **Ngăn hẳn** việc tự động đẩy `orders[].recipient` qua `notify_carrier`; đồng thời monitor sáng đèn ngay khi phát hiện có trường PII bị cắt. | Hãng vận chuyển tra cứu ngược thông tin người nhận từ `order_id` trên hệ thống giao nhận khác ngoài trợ lý. |
-| [3] | `legal.pii_fields_blocked_to_third_party` + kiểm tra định kỳ payload `outbound` | Phát hiện / Vận hành | **Giảm khả năng** nhưng chưa ngăn tuyệt đối ở mức quy trình ngoài phần mềm. | Rò rỉ qua kênh ngoài `notify_carrier` (phiếu in kho, CSKH gửi tay, hoặc API đồng bộ đối tác). |
+| [1 · Kỹ thuật] Payload có trường ngoài `carrier_notice_fields` (`customer_note`, `recipient_contact`) hoặc giá trị PII người nhận lọt trong trường được phép. | `write_gate` nhánh `notify_carrier`: lấy allowlist từ policy hiệu lực, loại key ngoài danh sách và loại giá trị trùng tên/SĐT/địa chỉ người nhận trong `orders[].recipient`; phát metric `recipient_pii_fields_removed_rate`. | Chặn; metric phát hiện việc guard phải can thiệp. | Ngăn trường ngoài allowlist và giá trị PII khớp chính xác với dữ liệu recipient đã biết trên kênh `notify_carrier`; không bảo đảm bắt được biến thể/diễn giải lại PII hoặc dữ liệu gửi qua tool khác. | Còn hở nếu policy hiệu lực sai, guard bị bypass, dữ liệu recipient thiếu/sai, PII được viết biến thể hoặc đi qua kênh khác. |
+| [2] | | | | |
+| [3] | | | | |
 
 ---
 

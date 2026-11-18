@@ -1,5 +1,5 @@
 {
- "collected_at": "2026-11-18T22:28:30",
+ "collected_at": "2026-11-18T23:46:21",
  "incident": null,
  "run_ids": {},
  "grade_run_id": null,
@@ -18,7 +18,7 @@
   "config/switches.json": "9fcdb809437346392c6ded442f4f562c357ef89a7688a454505f94bcd969866b",
   "docs/form-a-criteria.md": "cc40ebc5a4bf456bc99030da106bdf3b72eec69884082831d1da0a82ff7b4f68",
   "docs/form-b-evaluation-gates.md": "7d783f2f2bbea68dbc1435b3488fb33a71dcb36243e59185c239cb654bda5e56",
-  "docs/form-c-incident.md": "136c68feea3af6d79b77b77647d7877583d9cdea639ba0b313b84a98bd1abdd0",
+  "docs/form-c-incident.md": "98d5549da85899386889c04084aa196cc9ad901c82a4a69975776621ae3f5811",
   "runs/journal.jsonl": "bb7595f8d9631dcd6dae33e5c2a3bbd842bfbe0cba51e2b1e8713f5085a90fed",
   "submission.json": "d959e8700646d4db74e9ba589722f12b9ac24cf5dafe62b9c8b54e3102b2f061"
  }

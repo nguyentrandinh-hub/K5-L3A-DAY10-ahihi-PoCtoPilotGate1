@@ -263,7 +263,7 @@ Vì sao có thể sai: Trong thực tế vận hành, người dùng hoặc nhâ
 
 <a id="c6"></a>
 
-## C6 · Câu 3.4 · Fault tree TRƯỚC khi sửa (mã lần chạy: `__________`)
+## C6 · Câu 3.4 · Fault tree TRƯỚC khi sửa (mã lần chạy: `R-S7-before-20261118-165753-aa738b`)
 
 **Khung tư duy.** Đi từ **tác hại** ngược về nguyên nhân, không đi từ lỗi mình tình cờ thấy. Mỗi tầng hỏi "điều gì phải xảy
 ra thì điều trên mới xảy ra", nối bằng **HOẶC** (một trong các nhánh là đủ) hoặc **VÀ** (phải đồng thời). Một biện pháp tốt
@@ -278,21 +278,22 @@ thường biến một nhánh HOẶC thành VÀ: tác hại chỉ còn xảy ra 
 Ít nhất hai nhánh ở hai tầng khác nhau (kỹ thuật, kinh doanh, con người); mỗi lá có bằng chứng (ticket@seed, trường dữ liệu, hoặc một dòng của report).
 
 ```
-[ĐỈNH] Tác hại: ______________________________ (cho ai: __________, đo bằng: __________)
- └─ HOẶC
- ├─ [1] ______________________________ tầng: đầu vào / data / hành động / quyền hạn / vận hành / kinh doanh
- │ └─ vì: ________________________ bằng chứng: ticket ______@seed ____
- ├─ [2] ______________________________ tầng: ______
- │ └─ vì: ________________________ bằng chứng: ticket ______@seed ____
- └─ [3] ______________________________ tầng: ______
- └─ vì: ________________________ bằng chứng: ______
+[ĐỈNH] Tác hại: Lộ tên, SĐT và địa chỉ người nhận quà cho hãng vận chuyển (cho ai: người nhận quà / bên thứ ba, đo bằng: pii_leaks = 30 ở mốc base)
+ └─ VÀ (lỗi đầu vào/data VÀ thiếu cổng chặn trước khi gửi)
+     ├─ HOẶC (nguồn dữ liệu PII đi vào payload)
+     │   ├─ [1] Khách gõ PII người nhận vào nội dung ticket và model trích thẳng vào payload (tầng: đầu vào)
+     │   │    └─ vì: không tách dữ liệu người dùng nhập khỏi dữ liệu được phép gửi hãng · bằng chứng: ticket S7-01@seed 11 (bà Nguyễn Thị Tâm, 0912345678, 14 ngõ 82 Chùa Láng)
+     │   └─ [2] Hệ thống tự kéo thông tin người nhận từ DB đơn quà tặng vào payload dù khách không gõ (tầng: data)
+     │        └─ vì: đơn có is_gift = true nên trợ lý lấy luôn orders[].recipient · bằng chứng: ticket S7-20@seed 11, S7-21@seed 11
+     └─ [3] Kênh gửi hãng không giới hạn trường theo hợp đồng trước khi thực thi notify_carrier (tầng: hành động / quyền hạn & pháp lý)
+          └─ vì: ở mốc base chưa có whitelist carrier_notice_fields trong write_gate và chưa bật legal.pii_fields_blocked_to_third_party · bằng chứng: R-S7-before-20261118-165753-aa738b (30 lần pii_leaks)
 ```
 
 | Lá | Specification bị vi phạm (phần mềm phải làm gì) | Giả định môi trường đã sai (thế giới ngoài phần mềm) |
 |---|---|---|
-| [1] | | |
-| [2] | | |
-| [3] | | |
+| [1] | Nội dung `ticket.text` do khách nhập không được phép truyền thẳng vào `payload` của `notify_carrier` ngoài 4 trường trong `carrier_notice_fields`. | Khách không gõ thông tin cá nhân của người khác (SĐT, địa chỉ nhà) vào tin nhắn khiếu nại giao trễ. |
+| [2] | `orders[].recipient` của đơn quà tặng (`is_gift = true`) chỉ dùng nội bộ, không được đưa vào `notify_carrier`. | Người nhận quà được coi là đã biết/đồng ý chia sẻ SĐT, địa chỉ với hãng vận chuyển như người đặt hàng. |
+| [3] | Trước khi gọi `notify_carrier`, hệ thống phải lọc bỏ mọi trường ngoài `policies[].carrier_notice_fields` (`order_id`, `parcel_id`, `district`, `delay_days`). | Mọi thông báo tạo từ trợ lý đều mặc định chỉ chứa các trường vận đơn an toàn theo hợp đồng. |
 
 **Ví dụ mẫu một nhánh (bộ nền, đừng chép):** đỉnh "hãng VNX nhận lỗi oan cho đơn O-1002" ← [1] agent dùng độ trễ 5 ngày ←
 model lấy số trong ticket đè lên DB (`T-002@55`). Spec bị vi phạm: độ trễ dùng để ghi lỗi phải lấy từ tracking DB. Giả định
@@ -343,21 +344,22 @@ Thẻ S5 dùng mục này cho một con số kinh doanh: chi phí mỗi ticket t
 
 <a id="c9"></a>
 
-## C9 · Câu 3.7 · Fault tree SAU khi sửa (mã lần chạy: `__________`)
+## C9 · Câu 3.7 · Fault tree SAU khi sửa (mã lần chạy: `R-S7-after-20261118-222830-05580d`)
 
 Vẽ lại cây ở C6. Ở mỗi nhánh đã xử lý, thêm một nút `VÀ [gate … hỏng]` và ghi:
 
 ```
-[ĐỈNH] ______________________________
+[ĐỈNH] Lộ PII người nhận quà cho hãng vận chuyển
  └─ HOẶC
- ├─ [1] ______________ VÀ [gate ______ hỏng]
- ├─ [2] ______________ VÀ [gate ______ hỏng]
- └─ [3] ______________ (còn hở?)
+ ├─ [1 · KỸ THUẬT] Payload `notify_carrier` chứa trường ngoài allowlist hoặc giá trị PII trong trường được phép
+ │   VÀ [write_gate không áp đúng chính sách hiệu lực / bỏ sót giá trị PII]
+ ├─ [2 · PHÁP LÝ / VẬN HÀNH] ______________________________ (nhánh nhóm bổ sung)
+ └─ [3 · KÊNH KHÁC] ______________________________ (còn hở?)
 ```
 
 | Nhánh | Gate (hàm trong `guards.py` / khoá config / metric trong `monitors.py`) | Tầng gate (phát hiện / chặn / giới hạn thiệt hại / vận hành) | Giảm hay ngăn? Vì sao | Nhánh còn hở |
 |---|---|---|---|---|
-| [1] | | | | |
+| [1 · Kỹ thuật] Payload có trường ngoài `carrier_notice_fields` (`customer_note`, `recipient_contact`) hoặc giá trị PII người nhận lọt trong trường được phép. | `write_gate` nhánh `notify_carrier`: lấy allowlist từ policy hiệu lực, loại key ngoài danh sách và loại giá trị trùng tên/SĐT/địa chỉ người nhận trong `orders[].recipient`; phát metric `recipient_pii_fields_removed_rate`. | Chặn; metric phát hiện việc guard phải can thiệp. | Ngăn trường ngoài allowlist và giá trị PII khớp chính xác với dữ liệu recipient đã biết trên kênh `notify_carrier`; không bảo đảm bắt được biến thể/diễn giải lại PII hoặc dữ liệu gửi qua tool khác. | Còn hở nếu policy hiệu lực sai, guard bị bypass, dữ liệu recipient thiếu/sai, PII được viết biến thể hoặc đi qua kênh khác. |
 | [2] | | | | |
 | [3] | | | | |
 
@@ -369,7 +371,8 @@ Vẽ lại cây ở C6. Ở mỗi nhánh đã xử lý, thêm một nút `VÀ [g
 
 | Rủi ro | Khả năng | Tác động | Người phụ trách (PIC, một người) | Dấu hiệu (metric nào, ngưỡng nào) | Xử lý | Ảnh hưởng bước đánh giá | Nhóm chức năng (GOVERN / MAP / MEASURE / MANAGE) |
 |---|---|---|---|---|---|---|---|
-| | | | | | | | |
+| Thông tin người nhận quà (`orders[].recipient` hoặc SĐT/địa chỉ trong `ticket.text`) bị đẩy vào trường hợp lệ (`district`) hoặc qua kênh ngoài `notify_carrier`. | Trung bình | Cao (vi phạm pháp chế, `pii_leaks_max = 0`) | Đinh Trần Nguyên | `recipient_pii_fields_removed_rate > 0` (trên S7 hiện `0.333333`) hoặc `pii_leaks > 0` trong report. | Tắt `notify_carrier` trong `config/switches.json` nếu `pii_leaks > 0`; rà soát payload và siết kiểm tra định dạng trường `district`. | Chuyển quyết định từ `Tiếp tục` sang `Thu hẹp` hoặc `Dừng` kênh gửi hãng tự động. | MEASURE / MANAGE |
+| Chính sách `REFUND-v3` chuyển sang `REFUND-v4` ngày `01/12/2026` nhưng `index_active` cập nhật trễ làm áp sai điều khoản hoàn hoặc `carrier_notice_fields`. | Thấp | Trung bình | Trịnh Thanh Tùng | `wrongful_carrier_faults > 0` hoặc tỷ lệ chọn sai `policy_id` (Mục A2) `> 0%`. | Đối chiếu `as_of` với `effective_from`/`effective_to` trong `data/world.json`, tạm tắt `file_carrier_fault` nếu ghi oan. | Buộc kiểm lại ở Gate 1 / giữ nguyên phạm vi `HN`, `HCM` tới khi xác nhận đồng bộ policy. | MAP / MANAGE |
 
 Quy tắc: **mỗi dòng phải đổi được một quyết định.** Cột "Dấu hiệu" phải là một metric có trong `monitors.py` hoặc trong report.
 
@@ -385,26 +388,30 @@ Ghi các dòng đổi sau sự cố. Mỗi dòng vẫn phải có một PIC có 
 
 | # nhóm | Trạng thái mới (Xong / Chưa / Không áp dụng) | Bằng chứng mới (mã lần chạy, mục phiếu, số trong report) | PIC |
 |---|---|---|---|
-| | | | |
-| | | | |
+| 1 · Chất lượng | Xong | `R-S7-grade-20261118-222829-05580d`: `3 visible ✅`, `5 regression ✅` (`base` pass_rate `1.0`, `S7` pass_rate `1.0`, hoàn sai `0đ`, lỗi hãng `0`, PII `0`). | Trịnh Thanh Tùng |
+| 4 · Quyền hạn | Xong | `lab10/guards.py` (`write_gate` nhánh `issue_refund`, `file_carrier_fault`, `notify_carrier`) + `config/switches.json` (`4` công tắc `on`). | Trịnh Thanh Tùng |
+| 5 · Hiệu năng, hạ tầng | Xong | `config/operating_gates.json`: `reviewers_on_shift = 1` (`6 ca/giờ`), `max_queue_wait_minutes = 60`; report `S7` và `base` đều `0` ca bị ùn, chờ `0.0` phút. | Đinh Trần Nguyên |
+| 6 · Chi phí | Xong | `R-S7-after-20261118-222830-05580d`: chi phí `5.667đ/ticket ≤ 8.500đ`, `ROI = 0.76 ≥ 0.15`; trên `base`: `5.319đ/ticket`, `ROI = 0.88`. | Đặng Nhật Long |
+| 7 · Vận hành | Xong | `config/operating_gates.json` (`NV-TUNG`, `NV-HANH`, `#logix-refund-ops-alerts`), `lab10/monitors.py` (`recipient_pii_fields_removed_rate`: `6 monitor ✅`), Runbook 1–5. | Đinh Trần Nguyên |
+| 8 · Con người, pháp lý | Xong | `legal.pii_fields_blocked_to_third_party` + `carrier_fault_requires_recorded_cause: true`, mục `C3.3 Hiệu chỉnh lòng tin`, `pii_leaks = 0` ở `prepared` và `after`. | Đinh Trần Nguyên |
 
 ### Runbook 4 · Sau sự cố trên thẻ (vòng 2)
 
 | Câu hỏi | Trả lời |
 |---|---|
-| Tín hiệu nào ở Runbook 2 (Phiếu B mục B7.5) lẽ ra phải báo trước sự cố này? Nó đã có chưa? | |
-| Bàn thêm hoặc đổi ngưỡng nào, từ bao nhiêu thành bao nhiêu? | |
-| Bàn đổi gì về **người** (số người trực, ai đứng tên, ai được gọi)? | |
-| Bàn đổi gì về **phạm vi** hoặc **quy trình** (kiểm mẫu, ghi chú giải thích, trần)? | |
-| Nói gì với bên thứ ba bị ảnh hưởng (hãng, shop, người nhận, nhân viên duyệt), ai nói, trong bao lâu? | |
-| Dữ liệu cá nhân nào đã rời hệ thống mà không thu hồi được? Báo cho ai? | |
-| Sự cố lộ ra trước qua số máy đo, phản hồi của người, hay đọc nội dung? Nguồn nào bàn chưa có? | |
+| Tín hiệu nào ở Runbook 2 (Phiếu B mục B7.5) lẽ ra phải báo trước sự cố này? Nó đã có chưa? | Dòng **Lỗi ghi oan cho hãng / lộ dữ liệu cá nhân (`pii_leaks`)** ở Runbook 2 đã có từ vòng 1 (ngưỡng đỏ `≥ 1`), nhưng vòng 1 chưa có chỉ số theo dõi riêng trong `lab10/monitors.py` để phát hiện sớm số lần guard phải cắt trường PII trước khi gửi (`recipient_pii_fields_removed_rate`). |
+| Bàn thêm hoặc đổi ngưỡng nào, từ bao nhiêu thành bao nhiêu? | Giữ ngưỡng `pii_leaks = 0`, bổ sung ngưỡng theo dõi mới `recipient_pii_fields_removed_rate > 0` trong `lab10/monitors.py` (từ `chưa có` → `> 0` là cảnh báo vàng kiểm tra nguồn dữ liệu đầu vào `orders[].recipient` / `ticket.text`). |
+| Bàn đổi gì về **người** (số người trực, ai đứng tên, ai được gọi)? | Giữ nguyên `1` người trực (`NV-HANH`, `6 ca/giờ`), PIC giữ công tắc `NV-TUNG`, đối soát bên thứ ba `NV-OANH`; không cần tăng người trực vì các ca lọc PII xử lý tự động không làm tăng hàng chờ (`0.0` phút). |
+| Bàn đổi gì về **phạm vi** hoặc **quy trình** (kiểm mẫu, ghi chú giải thích, trần)? | Giữ phạm vi 2 kho `HN`, `HCM` (`độ phủ 0.75` trên S7, `0.5909` trên base), giữ nguyên danh sách chặn `legal.pii_fields_blocked_to_third_party` và chỉ cho phép 4 trường trong `carrier_notice_fields` rời khỏi hệ thống. |
+| Nói gì với bên thứ ba bị ảnh hưởng (hãng, shop, người nhận, nhân viên duyệt), ai nói, trong bao lâu? | `NV-OANH` và bộ phận Pháp chế liên hệ hãng vận chuyển (`GHSH`, `VNX`, `DNB`) yêu cầu xóa dữ liệu SĐT/địa chỉ người nhận đã nhận ở các ca trước cổng, đồng thời xin lỗi và thông báo cho người nhận quà bị ảnh hưởng trong vòng **24 giờ** kể từ khi phát hiện. |
+| Dữ liệu cá nhân nào đã rời hệ thống mà không thu hồi được? Báo cho ai? | Tên, số điện thoại và địa chỉ nhà người nhận quà đã gửi trong payload trước khi bật cổng (`30` lần lộ ở mốc `base`). Báo ngay cho **bộ phận Pháp chế**, **Quản lý vận hành (`NV-TUNG`)** và **Kế toán đối soát (`NV-OANH`)** qua `#logix-refund-ops-alerts`. |
+| Sự cố lộ ra trước qua số máy đo, phản hồi của người, hay đọc nội dung? Nguồn nào bàn chưa có? | Trên thực tế thẻ S7, sự cố lộ ra qua **phản hồi khiếu nại của người nhận quà** gửi tới Pháp chế; trong lab lộ ra qua `pii_leaks = 30` ở mốc `base`. Nguồn bàn chưa có ở vòng 1 là **telemetry tỷ lệ trường PII bị cắt ở `notify_carrier` (`recipient_pii_fields_removed_rate`)** và kiểm tra giá trị PII lọt vào trường hợp lệ (`district`). |
 
 ### Runbook 5 · Ba kịch bản "nếu … thì …" cho tuần đầu chạy thử thật
 
-1. Nếu số ticket tăng gấp ___ lần trong một giờ thì: …
-2. Nếu nhà cung cấp LLM lỗi quá ___ phút thì: …
-3. Nếu người duyệt báo không tin một quyết định của trợ lý thì: …
+1. Nếu số ticket tăng gấp `3` lần trong một giờ thì: Khi hàng chờ chạm `≥ 5 ca` hoặc chờ `> 30 phút`, chị `NV-HANH` báo `#logix-refund-ops-alerts` và anh `NV-TUNG` gọi thêm `1` người trực (lên `2` người, `12 ca/giờ`); nếu vẫn chờ `> 45 phút` hoặc có ca ùn `> 60 phút` thì thu hẹp `business.pilot_scope` xuống `50%` hoặc giữ `1` kho ổn định.
+2. Nếu nhà cung cấp LLM lỗi quá `10` phút thì: Anh `NV-TUNG` chuyển toàn bộ 4 công tắc trong `config/switches.json` sang `"off"` trong vòng `5` phút, định tuyến toàn bộ ticket sang hàng chờ CSKH xử lý thủ công (`10.000đ/ticket`) do chị `NV-HANH` điều phối cho tới khi nhà cung cấp ổn định lại.
+3. Nếu người duyệt báo không tin một quyết định của trợ lý thì: Tạm chuyển ticket đó sang luồng làm tay, bật `operations.decision_note: true` và `operations.review_sampling_pct: 10` trong `config/operating_gates.json` để chị `NV-HANH` kiểm mẫu kèm lý do giải thích, đồng thời `Trịnh Thanh Tùng` dò `lab10.trace` đối chiếu với `data/world.json` trước khi cho chạy tự động tiếp.
 
 ---
 
