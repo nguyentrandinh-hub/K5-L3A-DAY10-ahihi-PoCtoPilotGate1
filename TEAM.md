@@ -85,3 +85,8 @@ Sản phẩm và kinh doanh của nhóm ahihi, thẻ S7. Phụ trách B3 (bản 
 - Bản đồ dữ liệu, ví dụ drift và bốn cổng kinh doanh. [Phiếu B, B3 và B7.4](templates/form-b-evaluation-gates.md) · [Cấu hình business](config/operating_gates.json)
 - Đặc tả kênh gửi hãng và quyết định Gate 1 v2. [Phiếu C, C5 và C12](templates/form-c-incident.md) · [Commit `ece5aa1` cập nhật C12](https://github.com/nguyentrandinh-hub/K5-L3A-DAY10-ahihi-PoCtoPilotGate1/commit/ece5aa1a442c5f100b62028bc5801d11cd9a26ec)
 - Báo cáo `R-S7-grade-20261118-233355-2c66d9` đạt `PASS-VISIBLE`. Số lần lộ dữ liệu cá nhân qua ba mốc là **30 → 0 → 0**. Mốc sau sửa là `R-S7-after-20261118-233356-2c66d9`.
+### Exit ticket
+
+- **Điều học được** là quyết định mở rộng pilot phải dựa trên bằng chứng trong phạm vi đã đo. Trên S7, hai kho `HN` và `HCM` phủ **75%** số ca, với **0** lần lộ dữ liệu cá nhân, chi phí **5.667đ/ticket** dưới trần **8.500đ** và ROI **0,76**. Dựa vào kết quả này, tôi đề xuất giữ quyết định **Thu hẹp** ở Gate 1 v2.
+- **Điều còn chưa chắc** là ROI và thời gian chờ có còn đạt ngưỡng với một người trực khi mở thêm kho `CT` và `DN`. Trước khi đề xuất mở rộng, tôi cần đo chi phí, ROI, thời gian chờ và số lần lộ dữ liệu cá nhân theo từng kho.
+
